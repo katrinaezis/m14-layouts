@@ -28,22 +28,41 @@ $(function() {
         /* ********************************** Create hierarchical data structure & treemap function  ********************************** */
 
         // Nest your data *by region* using d3.nest()
-
+        var nestedData = d3.nest()
+            .key(function(d) {
+                return d.region
+            })
+            .entries(data);
+        console.log(nestedData);
 
         // Define a hierarchy for your data
-
+        var root = d3.hierarchy(
+            {values: nestedData},
+            // tells where the children are
+            function(d) {
+                return d.values;
+            }
+        );
+        console.log(root);
 
 
         // Create a *treemap function* that will compute your layout given your data structure
-
+        var treemap = d3.treemap()
+            .size([width, height])
+            .tile(d3.treemapResquarify);
 
         /* ********************************** Create an ordinal color scale  ********************************** */
 
         // Get list of regions for colors
-
+        var regions = nestedData.map(function(d) {
+            return d.key;
+        });
 
         // Set an ordinal scale for colors
-
+        var colorScale = d3.scaleOrdinal()
+            .domain(regions)
+            .range(d3.schemeCategory10);
+        
 
         /* ********************************** Write a function to perform the data-join  ********************************** */
 
@@ -51,17 +70,35 @@ $(function() {
         var draw = function() {
 
             // Redefine which value you want to visualize in your data by using the `.sum()` method
-
+            root.sum(function(d) {
+                return +d[measure];
+            });
 
             // (Re)build your treemap data structure by passing your `root` to your `treemap` function
-
+            treemap(root);
 
             // Bind your data to a selection of elements with class node
             // The data that you want to join is array of elements returned by `root.leaves()`
-
+            var nodes = div.selectAll('.node')
+                .data(root.leaves());
 
             // Enter and append elements, then position them using the appropriate *styles*
-
+            nodes.enter()
+                .append('div')
+                .text(function(d) {
+                    return d.data.country_code;
+                })
+                .attr('class', 'node')
+                .merge(nodes)
+                .transition()
+                .duration(1550)
+                .style('top', function(d){ return d.y0 + 'px';})
+                .style('left', function(d){return d.x0 + 'px';})
+                .style('width', function(d){return d.x1 - d.x0 + 'px'})
+                .style('height', function(d){return d.y1 - d.y0 + 'px'})
+                .style('background-color', function(d) {
+                    return colorScale(d.data.region);
+                })
         };
 
         // Call your draw function
